@@ -6,26 +6,44 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// roomId ごとに状態を分ける（プレイヤー一覧だけ持つ）
-const states = {};
-const DEFAULT_ROOM_ID = "default";
+// roomId ごとに状態を分けるが、数に上限をつける
+const states = new Map();
+const MAX_ROOMS = 50; // 同時に記憶しておく room の最大数（個人用なら 50 で十分）
 
 function getRoomId(req) {
   const fromQuery = req.query && req.query.roomId;
   const fromBody = req.body && req.body.roomId;
-  return fromQuery || fromBody || DEFAULT_ROOM_ID;
+  return fromQuery || fromBody || "default";
 }
 
 function getStateForRoom(roomId) {
-  if (!states[roomId]) {
-    states[roomId] = {
+  if (!states.has(roomId)) {
+    states.set(roomId, {
       players: [],
-    };
+      currentPlayerId: null,
+      updatedAt: Date.now(),
+    });
   }
-  return states[roomId];
+  return states.get(roomId);
 }
 
-// GET: 指定 room のプレイヤー一覧だけ返す
+// 古い room から順に捨てる
+function pruneRooms() {
+  if (states.size <= MAX_ROOMS) return;
+
+  // updatedAt の古い順にソートして、余分な分を削除
+  const entries = Array.from(states.entries()).sort(
+    (a, b) => (a[1].updatedAt || 0) - (b[1].updatedAt || 0)
+  );
+
+  const excess = states.size - MAX_ROOMS;
+  for (let i = 0; i < excess; i++) {
+    const roomIdToDelete = entries[i][0];
+    states.delete(roomIdToDelete);
+    console.log("prune room:", roomIdToDelete);
+  }
+}
+
 app.get("/", (req, res) => {
   const roomId = getRoomId(req);
   const state = getStateForRoom(roomId);
@@ -35,22 +53,25 @@ app.get("/", (req, res) => {
   res.json({
     roomId,
     players: state.players,
+    currentPlayerId: state.currentPlayerId,
   });
 });
 
-// POST: 指定 room のプレイヤー一覧だけ更新
 app.post("/", (req, res) => {
   const roomId = getRoomId(req);
-  const { players } = req.body || {};
-
+  const { players, currentPlayerId } = req.body || {};
   const state = getStateForRoom(roomId);
-  if (Array.isArray(players)) {
-    state.players = players;
-  }
+
+  state.players = Array.isArray(players) ? players : [];
+  state.currentPlayerId = currentPlayerId ?? null;
+  state.updatedAt = Date.now();
+
+  pruneRooms();
 
   console.log("POST /", {
     roomId,
     players: state.players.length,
+    currentPlayerId: state.currentPlayerId,
   });
 
   res.json({ success: true, roomId });

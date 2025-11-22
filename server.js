@@ -6,7 +6,7 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// roomId ごとに状態を分ける
+// roomId ごとに状態を分ける（プレイヤー一覧だけ持つ）
 const states = {};
 const DEFAULT_ROOM_ID = "default";
 
@@ -20,12 +20,12 @@ function getStateForRoom(roomId) {
   if (!states[roomId]) {
     states[roomId] = {
       players: [],
-      currentPlayerId: null,
     };
   }
   return states[roomId];
 }
 
+// GET: 指定 room のプレイヤー一覧だけ返す
 app.get("/", (req, res) => {
   const roomId = getRoomId(req);
   const state = getStateForRoom(roomId);
@@ -34,22 +34,23 @@ app.get("/", (req, res) => {
 
   res.json({
     roomId,
-    ...state,
+    players: state.players,
   });
 });
 
+// POST: 指定 room のプレイヤー一覧だけ更新
 app.post("/", (req, res) => {
   const roomId = getRoomId(req);
-  const { players, currentPlayerId } = req.body || {};
+  const { players } = req.body || {};
 
   const state = getStateForRoom(roomId);
-  state.players = Array.isArray(players) ? players : [];
-  state.currentPlayerId = currentPlayerId ?? null;
+  if (Array.isArray(players)) {
+    state.players = players;
+  }
 
   console.log("POST /", {
     roomId,
     players: state.players.length,
-    currentPlayerId: state.currentPlayerId,
   });
 
   res.json({ success: true, roomId });

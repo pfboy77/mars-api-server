@@ -6,17 +6,14 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// ★ 重要：roomId ごとの状態を持つ
+// roomId ごとに状態を分ける
 const states = {};
 const DEFAULT_ROOM_ID = "default";
 
 function getRoomId(req) {
-  // クエリ優先、それがなければ body、その両方なければ "default"
-  return (
-    (req.query && req.query.roomId) ||
-    (req.body && req.body.roomId) ||
-    DEFAULT_ROOM_ID
-  );
+  const fromQuery = req.query && req.query.roomId;
+  const fromBody = req.body && req.body.roomId;
+  return fromQuery || fromBody || DEFAULT_ROOM_ID;
 }
 
 function getStateForRoom(roomId) {
@@ -46,7 +43,7 @@ app.post("/", (req, res) => {
   const { players, currentPlayerId } = req.body || {};
 
   const state = getStateForRoom(roomId);
-  state.players = players || [];
+  state.players = Array.isArray(players) ? players : [];
   state.currentPlayerId = currentPlayerId ?? null;
 
   console.log("POST /", {

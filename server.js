@@ -6,53 +6,20 @@ const port = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// roomId ごとに状態を分ける
-const states = {};
-const DEFAULT_ROOM_ID = "default";
-
-function getRoomId(req) {
-  const fromQuery = req.query && req.query.roomId;
-  const fromBody = req.body && req.body.roomId;
-  return fromQuery || fromBody || DEFAULT_ROOM_ID;
-}
-
-function getStateForRoom(roomId) {
-  if (!states[roomId]) {
-    states[roomId] = {
-      players: [],
-      currentPlayerId: null,
-    };
-  }
-  return states[roomId];
-}
+let state = {
+  players: [],
+  currentPlayerId: null,
+};
 
 app.get("/", (req, res) => {
-  const roomId = getRoomId(req);
-  const state = getStateForRoom(roomId);
-
-  console.log("GET /", { roomId, players: state.players.length });
-
-  res.json({
-    roomId,
-    ...state,
-  });
+  res.json(state);
 });
 
 app.post("/", (req, res) => {
-  const roomId = getRoomId(req);
-  const { players, currentPlayerId } = req.body || {};
-
-  const state = getStateForRoom(roomId);
-  state.players = Array.isArray(players) ? players : [];
-  state.currentPlayerId = currentPlayerId ?? null;
-
-  console.log("POST /", {
-    roomId,
-    players: state.players.length,
-    currentPlayerId: state.currentPlayerId,
-  });
-
-  res.json({ success: true, roomId });
+  const { players, currentPlayerId } = req.body;
+  state.players = players;
+  state.currentPlayerId = currentPlayerId;
+  res.json({ success: true });
 });
 
 app.listen(port, () => {

@@ -27,16 +27,9 @@ function getStateForRoom(roomId) {
 }
 
 app.get("/", (req, res) => {
-  const roomId = getRoomId(req);
-  const state = getStateForRoom(roomId);
-
-  console.log("GET /", { roomId, players: state.players.length });
-
-  res.json({
-    roomId,
-    ...state,
-  });
+  res.json({ hello: "world" });
 });
+
 
 app.post("/", (req, res) => {
   const roomId = getRoomId(req);
